@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <PublishTrimmed>true</PublishTrimmed>
+        <CrossGenDuringPublish>false</CrossGenDuringPublish>
+        <OutputType>Exe</OutputType>
+        <RuntimeIdentifiers>linux-musl-x64;win-x64</RuntimeIdentifiers>
+        <TargetFramework>net6.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\TOTP.API\TOTP.API.csproj" />
+      <ProjectReference Include="..\TOTP.Application\TOTP.Application.csproj" />
+      <ProjectReference Include="..\TOTP.Core\TOTP.Core.csproj" />
+      <ProjectReference Include="..\TOTP.Infrastructure\TOTP.Infrastructure.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="6.0.8">
+        <PrivateAssets>all</PrivateAssets>
+        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      </PackageReference>
+    </ItemGroup>
+
+</Project>
