@@ -1,2 +1,3 @@
-﻿global using Node.Core.Interfaces;
-global using Node.Core.Models;
+﻿global using System.Security.Cryptography;
+global using Microsoft.Extensions.Configuration;
+global using TOTP.Core.Interfaces;

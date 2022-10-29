@@ -19,6 +19,12 @@
       <PackageReference Include="Microsoft.Extensions.Configuration" Version="6.0.1" />
       <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="6.0.0" />
       <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="6.0.6" />
+      <PackageReference Include="StackExchange.Redis" Version="2.6.70" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Configuration" />
+      <Folder Include="Migrations" />
     </ItemGroup>
 
 </Project>
