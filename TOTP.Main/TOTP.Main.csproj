@@ -22,10 +22,4 @@
       <ProjectReference Include="..\TOTP.Infrastructure\TOTP.Infrastructure.csproj" />
     </ItemGroup>
 
-    <ItemGroup>
-      <Reference Include="TOTP.Application">
-        <HintPath>..\TOTP.UnitTests\bin\Debug\net6.0\TOTP.Application.dll</HintPath>
-      </Reference>
-    </ItemGroup>
-
 </Project>

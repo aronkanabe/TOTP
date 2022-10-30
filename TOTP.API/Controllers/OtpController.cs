@@ -37,7 +37,7 @@ public class OtpController : ControllerBase
         {
             return BadRequest(exception.Message);
         }
-        catch (Exception exception)
+        catch (Exception)
         {
             return StatusCode(StatusCodes.Status500InternalServerError);
         }
@@ -64,7 +64,7 @@ public class OtpController : ControllerBase
         {
             return BadRequest(argumentException.Message);
         }
-        catch (Exception exception)
+        catch (Exception)
         {
             return StatusCode(StatusCodes.Status500InternalServerError);
         }

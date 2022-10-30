@@ -10,4 +10,8 @@
       <ProjectReference Include="..\TOTP.Core\TOTP.Core.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <PackageReference Include="Microsoft.Extensions.Options" Version="6.0.0" />
+    </ItemGroup>
+
 </Project>

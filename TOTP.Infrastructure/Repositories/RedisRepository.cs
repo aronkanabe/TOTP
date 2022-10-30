@@ -35,7 +35,7 @@ public class RedisRepository : IRedisRepository
         return database.StringGet(key);
     }
 
-    public byte[]? GetMasterKey()
+    public virtual byte[]? GetMasterKey()
     {
         return GetBytes(MasterKey);
     }

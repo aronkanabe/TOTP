@@ -1,51 +1,46 @@
-﻿namespace TOTP.Core.Models;
+﻿using Microsoft.Extensions.Options;
+
+namespace TOTP.Core.Models;
 
 public class OtpCodeGenerator : IOtpCodeGenerator
 {
-    private readonly IRedisRepository redisRepository;
-    private readonly IConfiguration configuration;
+    private readonly OtpOptions otpOptions;
+    private readonly IKeyProvider keyProvider;
 
-    public OtpCodeGenerator(IRedisRepository redisRepository, IConfiguration configuration)
+    public OtpCodeGenerator(IOptions<OtpOptions> otpOptions, IKeyProvider keyProvider)
     {
-        this.redisRepository = redisRepository;
-        this.configuration = configuration;
-        
-        byte[]? secretKey = redisRepository.GetMasterKey();
-        if (secretKey != null) return;
-        // generate master key
-        secretKey = new byte[64];
-        RandomNumberGenerator.Fill(secretKey);
-        redisRepository.SetMasterKey(secretKey!);
+        this.otpOptions = otpOptions.Value;
+        this.keyProvider = keyProvider;
     }
 
-    public OtpCode GenerateOtpCode(Guid userId, DateTime dateTime)
+    public OtpCode GenerateOtpCode(Guid userId, DateTime dateTime, OtpHashAlgorithm otpHashAlgorithm)
     {
         if (userId == Guid.Empty) throw new ArgumentException("Empty userId not accepted");
 
-        var masterKey = redisRepository.GetMasterKey();
-        if (masterKey == null) throw new InvalidOperationException("Master key not set!");
-        
         // generate shared key for each request
-        byte[] sharedKey = SHA1.HashData(masterKey.Concat(userId.ToByteArray()).ToArray());
+        byte[] sharedKey = keyProvider.DeriveKey(userId, otpHashAlgorithm);
 
         // calculate interval
-        TimeSpan validInterval = TimeSpan.FromSeconds(int.Parse(configuration.GetSection("Otp").GetSection("validInterval").Value));
-        long timeCounter = dateTime.Ticks / validInterval.Ticks;
+        TimeSpan validInterval = otpOptions.ValidInterval;
+        long timeCounter = (dateTime.Ticks - 621355968000000000L) / validInterval.Ticks;
 
         //generate HMAC message
-        byte[] hmacMessage = HMACSHA1.HashData(sharedKey, BitConverter.GetBytes(timeCounter));
+        var hmacAlgorithm = keyProvider.HmacAlgorithm(otpHashAlgorithm);
+        hmacAlgorithm.Key = sharedKey;
+        
+        byte[] hmacMessage = hmacAlgorithm.ComputeHash(BitConverter.GetBytes(timeCounter));
 
-        var numberOfDigits = int.Parse(configuration.GetSection("Otp").GetSection("DigitsCount").Value);
+        var numberOfDigits = otpOptions.DigitsCount;
         
         var totpCode = HmacToOtpCode(hmacMessage, numberOfDigits);
         
-        return new OtpCode(totpCode.ToString());
+        return new OtpCode(totpCode);
     }
 
-    private int HmacToOtpCode(IReadOnlyList<byte> hmacMessage, int numberOfDigits)
+    private static string HmacToOtpCode(IReadOnlyList<byte> hmacMessage, int numberOfDigits)
     {
         // dynamic truncation
-        int offset = hmacMessage[19] & 0xf;
+        int offset = hmacMessage[hmacMessage.Count - 1] & 0xf;
         int binCode = (hmacMessage[offset] & 0x7f) << 24
                        | (hmacMessage[offset + 1] & 0xff) << 16
                        | (hmacMessage[offset + 2] & 0xff) << 8
@@ -53,6 +48,11 @@ public class OtpCodeGenerator : IOtpCodeGenerator
 
         // Get the last {numberOfDigits} of the generated 31 bit number
         var totpCode = binCode % (int) Math.Pow(10, numberOfDigits);
-        return totpCode;
+        var totpCodeString = totpCode.ToString();
+        
+        if (totpCodeString.Length < numberOfDigits)
+            totpCodeString = totpCodeString.PadLeft(numberOfDigits, '0');
+        
+        return totpCodeString;
     }
 }

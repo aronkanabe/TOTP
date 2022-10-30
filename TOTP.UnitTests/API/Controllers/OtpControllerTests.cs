@@ -26,7 +26,7 @@ public class TopologyControllerTests
     [Test]
     public void GenerateOtpCode_WithArgumentExceptionInOtpCodeGenerator_ShouldReturnBadRequest()
     {
-        mockOtpCodeGenerator.Setup(generator => generator.Generate(It.IsAny<Guid>(), It.IsAny<DateTime>()))
+        mockOtpCodeGenerator.Setup(generator => generator.Generate(It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<OtpHashAlgorithm?>()))
             .Throws<ArgumentException>();
         
         // the actual time is not important
