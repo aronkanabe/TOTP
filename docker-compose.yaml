@@ -8,5 +8,15 @@ services:
     command: redis-server --save 20 1 --loglevel warning
     volumes:
       - redis:/data
+  totp:
+    build: .
+    depends_on:
+      - redis
+    ports:
+      - "5000:5000"
+      - "5001:5001"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:5000;
 volumes:
   redis:
