@@ -40,15 +40,23 @@ public class RedisRepository : IRedisRepository
         return GetBytes(MasterKey);
     }
     
-    public OtpCode? GetOtpCode(Guid userId)
+    public OtpCode? GetOtpCode(Guid userId, long timeWindow)
     {
-        var storedOtpCode = GetString(userId.ToString());
+        string key = GetKey(userId, timeWindow);
+        var storedOtpCode = GetString(key);
         return storedOtpCode == null ? null : new OtpCode(storedOtpCode);
     }
 
-    public void SetOtpCode(Guid userId, OtpCode otpCode, TimeSpan timeSpan)
+    public void SetOtpCode(Guid userId, long timeWindow, OtpCode otpCode)
     {
-        SetString(userId.ToString(), otpCode.Code, timeSpan);
+        var key = GetKey(userId, timeWindow);
+        SetString(key, otpCode.Code);
+    }
+
+    private static string GetKey(Guid userId, long timeWindow)
+    {
+        string key = userId.ToString() + timeWindow;
+        return key;
     }
 
     public void SetMasterKey(byte[] masterKey)

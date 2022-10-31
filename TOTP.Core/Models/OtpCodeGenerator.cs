@@ -21,8 +21,7 @@ public class OtpCodeGenerator : IOtpCodeGenerator
         byte[] sharedKey = keyProvider.DeriveKey(userId, otpHashAlgorithm);
 
         // calculate interval
-        TimeSpan validInterval = otpOptions.ValidInterval;
-        long timeCounter = (dateTime.Ticks - 621355968000000000L) / validInterval.Ticks;
+        var timeCounter = CalculateTimeCounter(dateTime);
 
         //generate HMAC message
         var hmacAlgorithm = keyProvider.HmacAlgorithm(otpHashAlgorithm);
@@ -35,6 +34,13 @@ public class OtpCodeGenerator : IOtpCodeGenerator
         var totpCode = HmacToOtpCode(hmacMessage, numberOfDigits);
         
         return new OtpCode(totpCode);
+    }
+
+    public long CalculateTimeCounter(DateTime dateTime)
+    {
+        TimeSpan validInterval = otpOptions.ValidInterval;
+        long timeCounter = (dateTime.Ticks - 621355968000000000L) / validInterval.Ticks;
+        return timeCounter;
     }
 
     private static string HmacToOtpCode(IReadOnlyList<byte> hmacMessage, int numberOfDigits)

@@ -29,7 +29,8 @@ public class OtpCodeService : IOtpCodeService
 
     public bool Verify(Guid userId, DateTime dateTime, OtpCode otpCode, OtpHashAlgorithm? otpHashAlgorithm = null)
     {
-        var storedOtpCode = redisRepository.GetOtpCode(userId);
+        var timeWindow = otpCodeGenerator.CalculateTimeCounter(dateTime);
+        var storedOtpCode = redisRepository.GetOtpCode(userId, timeWindow);
         if (storedOtpCode != null && otpCode.Equals(storedOtpCode)) return false;
         
         var generatedCode = otpCodeGenerator.GenerateOtpCode(userId, dateTime, otpHashAlgorithm ??  otpOptions.HashAlgorithm);
@@ -37,7 +38,7 @@ public class OtpCodeService : IOtpCodeService
         
         var validInterval = otpOptions.ValidInterval;
         
-        redisRepository.SetOtpCode(userId, otpCode, validInterval);
+        redisRepository.SetOtpCode(userId, timeWindow, otpCode);
         return true;
     }
 }

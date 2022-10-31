@@ -12,8 +12,8 @@ public interface IRedisRepository
     string? GetString(string key);
 
     byte[]? GetMasterKey();
-    OtpCode? GetOtpCode(Guid userId);
+    OtpCode? GetOtpCode(Guid userId, long timeWindow);
     
-    void SetOtpCode(Guid userId, OtpCode otpCode, TimeSpan timeToLive);
+    void SetOtpCode(Guid userId, long timeWindow, OtpCode otpCode);
     void SetMasterKey(byte[] masterKey);
 }

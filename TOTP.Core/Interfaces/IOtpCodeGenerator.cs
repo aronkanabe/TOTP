@@ -5,4 +5,5 @@ namespace TOTP.Core.Interfaces;
 public interface IOtpCodeGenerator
 {
     OtpCode GenerateOtpCode(Guid userId, DateTime dateTime, OtpHashAlgorithm otpHashAlgorithm);
+    long CalculateTimeCounter(DateTime dateTime);
 }
