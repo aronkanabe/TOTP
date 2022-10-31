@@ -1,4 +1,5 @@
 ﻿using System.Security.Cryptography;
+using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
@@ -10,8 +11,6 @@ namespace TOTP.UnitTests.Core.Models;
 
 public class OtpCodeGeneratorTests
 {
-    private Mock<IRedisRepository> mockRedisRepository;
-    private Mock<IRandomGenerator> mockRandomGenerator;
     private Mock<OtpCodeGenerator> mockOtpCodeGenerator;
     private Mock<IKeyProvider> mockKeyProvider;
     private OtpOptions otpOptions;
@@ -23,102 +22,66 @@ public class OtpCodeGeneratorTests
         0x30, 0x19, 0x3f, 0xc9};
     
     private Guid userId = Guid.Parse("99d0f4d2-45e1-4333-81a7-f30484bb71bc");
+    private DateTime unixEpoch;
 
     [SetUp]
     public void SetUp()
     {
-        mockRedisRepository = new Mock<IRedisRepository>();
-        mockRandomGenerator = new Mock<IRandomGenerator>();
+        unixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, 0, System.DateTimeKind.Utc);
         mockKeyProvider = new Mock<IKeyProvider>();
         otpOptions = new OtpOptions();
         otpOptionsWrapper = Options.Create(otpOptions);
-        mockOtpCodeGenerator = new Mock<OtpCodeGenerator>(mockRedisRepository.Object, otpOptions, mockRandomGenerator.Object)
+        mockOtpCodeGenerator = new Mock<OtpCodeGenerator>(otpOptionsWrapper, mockKeyProvider.Object)
         {
             CallBase = true
         };
+        mockKeyProvider.Setup(keyProvider => keyProvider.Key).Returns(masterKey);
+        mockKeyProvider.Setup(keyProvider => keyProvider.DeriveKey(It.IsAny<Guid>(), It.IsAny<OtpHashAlgorithm>()))
+            .Returns(Encoding.UTF8.GetBytes("12345678901234567890"));
+        mockKeyProvider.Setup(keyProvider => keyProvider.HmacAlgorithm(It.IsAny<OtpHashAlgorithm>()))
+            .Returns(new HMACSHA1());
     }
-    
-    [Test]
-    public void Constructor_WithExistingMasterKey_ShouldNotCallSetMasterKey()
-    {
-        // return existing master key
-        mockRedisRepository.Setup(repository => repository.GetMasterKey()).Returns(masterKey);
-        mockRedisRepository.Setup(repository => repository.SetMasterKey(It.IsAny<byte[]>())).Verifiable();
 
-        new OtpCodeGenerator(otpOptionsWrapper, mockKeyProvider.Object);
-        
-        mockRedisRepository.Verify(repository => repository.SetMasterKey(It.IsAny<byte[]>()), Times.Never);
-    }
-    
-    [Test]
-    public void Constructor_WithMissingMasterKey_ShouldGenerateAndSetMasterKey()
-    {
-        // return existing master key
-        mockRedisRepository.Setup(repository => repository.GetMasterKey()).Returns((byte[]?) null);
-        mockRedisRepository.Setup(repository => repository.SetMasterKey(It.IsAny<byte[]>())).Verifiable();
-        mockRandomGenerator.Setup(generator => generator.Fill(It.IsAny<byte[]>())).Returns(masterKey).Verifiable();
-
-        new OtpCodeGenerator(otpOptionsWrapper, mockKeyProvider.Object);
-        
-        mockRedisRepository.Verify(repository => repository.SetMasterKey(It.IsAny<byte[]>()), Times.AtLeastOnce);
-        mockRandomGenerator.Verify(generator => generator.Fill(It.IsAny<byte[]>()), Times.AtLeastOnce);
-    }
-    
     [Test]
     public void GenerateOtpCode_WithEmptyUserId_ShouldThrowArgumentException()
     {
-        // time not matters
-        var dateTime = new DateTime(1000, 01, 01);
-        var act = () => mockOtpCodeGenerator.Object.GenerateOtpCode(Guid.Empty, dateTime, OtpHashAlgorithm.Sha1);
+        var act = () => mockOtpCodeGenerator.Object.GenerateOtpCode(Guid.Empty, unixEpoch, OtpHashAlgorithm.Sha1);
 
         act.Should().Throw<ArgumentException>();
     }
-    
-    [Test]
-    public void GenerateOtpCode_WithNullMasterKey_ShouldThrowInvalidOperationException()
-    {
-        // time not matters
-        mockRedisRepository.Setup(repository => repository.GetMasterKey()).Returns((byte[]?) null);
-        
-        var dateTime = new DateTime(1000, 01, 01);
-        var act = () => mockOtpCodeGenerator.Object.GenerateOtpCode(userId, dateTime, OtpHashAlgorithm.Sha1);
 
-        act.Should().Throw<InvalidOperationException>();
-    }
-    
     [Test]
     [TestCase(6)]
     [TestCase(9)]
     public void GenerateOtpCode_WithCorrectParameters_ShouldGenerateNumberOfDigitsCode(int numberOfDigits)
     {
-        mockRedisRepository.Setup(repository => repository.GetMasterKey()).Returns(masterKey);
         otpOptions.ValidInterval = TimeSpan.FromSeconds(30);
         otpOptions.DigitsCount = numberOfDigits;
-
-        // time not matters
-        var dateTime = new DateTime(1000, 01, 01);
-        OtpCode result = mockOtpCodeGenerator.Object.GenerateOtpCode(userId, dateTime, OtpHashAlgorithm.Sha1);
+        
+        OtpCode result = mockOtpCodeGenerator.Object.GenerateOtpCode(userId, unixEpoch, OtpHashAlgorithm.Sha1);
 
         result.Should().BeOfType<OtpCode>();
         result.Code.Length.Should().Be(numberOfDigits);
     }
     
     [Test]
-    [TestCase(6)]
-    [TestCase(9)]
-    public void HmacToOtpCode_WithZeroHmacMessage_ShouldLeftPadOtpCode(int numberOfDigits)
+    [TestCase(6, 20)]
+    [TestCase(9, 20)]
+    [TestCase(6, 32)]
+    [TestCase(9, 32)]
+    [TestCase(6, 64)]
+    [TestCase(9, 64)]
+    public void HmacToOtpCode_WithZeroHmacMessage_ShouldLeftPadOtpCode(int numberOfDigits, int hashSize)
     {
-        mockRedisRepository.Setup(repository => repository.GetMasterKey()).Returns(masterKey);
         otpOptions.ValidInterval = TimeSpan.FromSeconds(30);
         otpOptions.DigitsCount = numberOfDigits;
-        
-        // time not matters
-        var hmacZero = new byte[64];
-        var dateTime = new DateTime(1000, 01, 01);
-        OtpCode result = mockOtpCodeGenerator.Object.GenerateOtpCode(userId, dateTime, OtpHashAlgorithm.Sha1);
+
+        var hmacZero = new byte[hashSize];
+
+        var result = OtpCodeGenerator.HmacToOtpCode(hmacZero, numberOfDigits);
     
-        result.Should().BeOfType<OtpCode>();
-        result.Code.Length.Should().Be(numberOfDigits);
-        result.Code.Should().StartWith(new string('0', numberOfDigits));
+        result.Should().BeOfType<string>();
+        result.Length.Should().Be(numberOfDigits);
+        result.Should().StartWith(new string('0', numberOfDigits));
     }
 }

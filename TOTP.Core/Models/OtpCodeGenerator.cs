@@ -26,8 +26,11 @@ public class OtpCodeGenerator : IOtpCodeGenerator
         //generate HMAC message
         var hmacAlgorithm = keyProvider.HmacAlgorithm(otpHashAlgorithm);
         hmacAlgorithm.Key = sharedKey;
-        
-        byte[] hmacMessage = hmacAlgorithm.ComputeHash(BitConverter.GetBytes(timeCounter));
+
+        var counterBytes = BitConverter.GetBytes(timeCounter);
+        if (BitConverter.IsLittleEndian)
+            counterBytes = counterBytes.Reverse().ToArray();
+        byte[] hmacMessage = hmacAlgorithm.ComputeHash(counterBytes);
 
         var numberOfDigits = otpOptions.DigitsCount;
         
@@ -43,7 +46,7 @@ public class OtpCodeGenerator : IOtpCodeGenerator
         return timeCounter;
     }
 
-    private static string HmacToOtpCode(IReadOnlyList<byte> hmacMessage, int numberOfDigits)
+    public static string HmacToOtpCode(IReadOnlyList<byte> hmacMessage, int numberOfDigits)
     {
         // dynamic truncation
         int offset = hmacMessage[hmacMessage.Count - 1] & 0xf;
